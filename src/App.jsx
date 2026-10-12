@@ -210,17 +210,10 @@ export default function App() {
   };
   const clearCart = () => { setCartState([]); setCartStorage([]); };
 
-  if (!authLoaded || !dataLoaded || !data) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: T.bg }}>
-        <style>{FONT_LINK}</style>
-        <Loader2 className="animate-spin" color={T.accent} size={26} />
-      </div>
-    );
-  }
-
-  const categories = data.categories || [];
-  const items = data.items || [];
+  // --- MOVED HOOKS AND DATA EXTRACTION ABOVE THE EARLY RETURN ---
+  // We use optional chaining (?.) so this doesn't crash before data loads
+  const categories = data?.categories || [];
+  const items = data?.items || [];
 
   // group flat items into products (same category + same productName)
   const groupedProducts = useMemo(() => {
@@ -244,15 +237,26 @@ export default function App() {
     return Array.from(map.values());
   }, [items]);
 
-  const filteredProducts = activeCategory ? groupedProducts.filter((p) => p.category === activeCategory) : groupedProducts;
-  const searchResults = query.trim() ? groupedProducts.filter((p) => p.productName.toLowerCase().includes(query.toLowerCase())) : [];
-  const savedProducts = groupedProducts.filter((p) => bookmarks.includes(p.key));
-
   const recentOrders = useMemo(() => {
     if (!notaOrders) return [];
     return [...notaOrders].sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 8)
-      .map((o) => ({ id: o.id, date: o.date, appLabel: (notaApps.find((a) => a.id === o.appId) || {}).label || "Service" }));
+      // Added optional chaining to notaApps below as a safety precaution
+      .map((o) => ({ id: o.id, date: o.date, appLabel: (notaApps?.find((a) => a.id === o.appId) || {}).label || "Service" }));
   }, [notaOrders, notaApps]);
+  // -------------------------------------------------------------
+
+  if (!authLoaded || !dataLoaded || !data) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: T.bg }}>
+        <style>{FONT_LINK}</style>
+        <Loader2 className="animate-spin" color={T.accent} size={26} />
+      </div>
+    );
+  }
+
+  const filteredProducts = activeCategory ? groupedProducts.filter((p) => p.category === activeCategory) : groupedProducts;
+  const searchResults = query.trim() ? groupedProducts.filter((p) => p.productName.toLowerCase().includes(query.toLowerCase())) : [];
+  const savedProducts = groupedProducts.filter((p) => bookmarks.includes(p.key));
 
   const saveItem = (item) => {
     const exists = items.some((i) => i.id === item.id);
